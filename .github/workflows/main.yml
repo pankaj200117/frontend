@@ -2,7 +2,7 @@ name: CICD for Dev-React
 on:
   push:
     branches:
-      - dev-react
+      - main
 
 jobs:
   run-frontend-on-ec2:
