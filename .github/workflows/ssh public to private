@@ -1,0 +1,65 @@
+name: CICD for stage
+on:
+  push:
+    branches:
+      - stage
+
+jobs:
+  run-frontend-on-ec2:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        with:
+          ref: stage
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Deploy to EC2
+        env:
+          PUBLIC_HOSTNAME: ${{ secrets.PUBLIC_EC2_HOST_STAGE }}      # Public EC2 instance IP or hostname
+          PUBLIC_USER_NAME: ${{ secrets.PUBLIC_EC2_USER_STAGE }}      # Public EC2 instance SSH username
+          PRIVATE_HOSTNAME: ${{ secrets.PRIVATE_EC2_HOST_STAGE }}     # Private EC2 instance IP or hostname
+          PRIVATE_USER_NAME: ${{ secrets.PRIVATE_EC2_USER_STAGE }}     # Private EC2 instance SSH username
+          PRIVATE_SSH_PASSWORD: ${{ secrets.PRIVATE_SSH_PASSWORD }}    # Password for private server SSH
+          PEM_FILE: ${{ secrets.EC2_PEM_FILE }}                  # PEM file content
+        run: |
+          # Save the PEM file to /tmp directory
+          echo "${PEM_FILE}" > /tmp/gametown-stageKEY.pem
+          chmod 600 /tmp/gametown-stageKEY.pem
+          # SSH into the public EC2 instance
+          ssh -i "/tmp/gametown-stageKEY.pem" -o StrictHostKeyChecking=no ${PUBLIC_USER_NAME}@${PUBLIC_HOSTNAME} << EOF
+          sudo apt-get update
+          sudo apt-get install -y sshpass git
+          sshpass -p "${PRIVATE_SSH_PASSWORD}" ssh -o StrictHostKeyChecking=no ${PRIVATE_USER_NAME}@${PRIVATE_HOSTNAME} << 'INNER_EOF'
+          # Check if the directory exists
+          if [ -d "/var/www/html/x-pay-gateway" ]; then
+              echo "Directory /var/www/html/x-pay-gateway exists. Proceeding to step B."
+          else
+              echo "Directory /var/www/html/x-pay-gateway does not exist. Cloning the repository."
+              git clone git@github.com:XPayOrg/x-pay-gateway.git /var/www/html/x-pay-gateway
+          fi   
+          cd /var/www/html/x-pay-gateway || { echo "Failed to navigate to /var/www/html/x-pay-gateway"; exit 1; }
+          git stash
+          git checkout stage
+          git pull
+          bash /home/usernode20/gateway.sh
+          echo "Script completed."
+          INNER_EOF
+          EOF
