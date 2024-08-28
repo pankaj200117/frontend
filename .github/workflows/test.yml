@@ -24,15 +24,20 @@ jobs:
         echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         echo "StrictHostKeyChecking no" > ~/.ssh/config
+        echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Deploy to server
-      env:
-        HOST: ${{ secrets.SERVER_HOST }}
-        USER: ${{ secrets.SERVER_USER }}
+    - name: Verify SSH Connection
       run: |
-        ssh -o StrictHostKeyChecking=no -vvv $USER@$HOST << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
+      env:
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+
+    - name: Deploy to server
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           set -x  # Enable command tracing
           cd /home/ubuntu/frontend || exit 1
           git pull origin main || exit 1
@@ -41,3 +46,6 @@ jobs:
           pm2 delete react-app || true  # Delete if it exists, ignore if it doesn't
           pm2 start npm --name "react-app" -- start || exit 1
         EOF
+      env:
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
