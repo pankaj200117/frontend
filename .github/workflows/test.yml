@@ -21,22 +21,22 @@ jobs:
     - name: Setup SSH with PEM Key
       run: |
         mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa.pem
-        chmod 600 ~/.ssh/id_rsa.pem
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/test-pankaj.pem
+        chmod 600 ~/.ssh/test-pankaj.pem
         echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Verify SSH Connection
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/test-pankaj.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
       env:
         SERVER_USER: ${{ secrets.SERVER_USER }}
         SERVER_HOST: ${{ secrets.SERVER_HOST }}
 
     - name: Deploy to server
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/test-pankaj.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           set -x  # Enable command tracing
           mkdir -p /home/ubuntu/frontend
           cd /home/ubuntu/frontend || { echo "Directory change failed"; exit 1; }
