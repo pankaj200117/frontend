@@ -21,31 +21,32 @@ jobs:
     - name: Setup SSH with PEM Key
       run: |
         mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/test-pankaj.pem
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/test-pankaj.pem
         chmod 600 ~/.ssh/test-pankaj.pem
         echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Verify SSH Connection
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/test-pankaj.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
-      env:
-        SERVER_USER: ${{ secrets.SERVER_USER }}
-        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        ssh -i ~/.ssh/test-pankaj.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
 
     - name: Deploy to server
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/test-pankaj.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        ssh -i ~/.ssh/test-pankaj.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           set -x  # Enable command tracing
-          mkdir -p /home/ubuntu/frontend
           cd /home/ubuntu/frontend || { echo "Directory change failed"; exit 1; }
+
+          # Fetch the latest code
           git pull origin main || { echo "Git pull failed"; exit 1; }
-          rm -rf node_modules package-lock.json  # Optional: Clean npm environment
+
+          # Clean npm environment
+          rm -rf node_modules package-lock.json
+
+          # Install dependencies
           npm install || { echo "npm install failed"; exit 1; }
+
+          # Build the application
           npm run build || { echo "npm build failed"; exit 1; }
+
+          # Start the application with PM2
           pm2 start npm --name "react-app" -- start || { echo "PM2 start failed"; exit 1; }
         EOF
-      env:
-        SERVER_USER: ${{ secrets.SERVER_USER }}
-        SERVER_HOST: ${{ secrets.SERVER_HOST }}
