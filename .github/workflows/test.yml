@@ -12,6 +12,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        ref: main  # Ensure you are using the correct branch
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
@@ -27,16 +29,17 @@ jobs:
 
     - name: Verify SSH Connection
       run: |
-        ssh -i ~/.ssh/test-pankaj.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
+        ssh -i ~/.ssh/test-pankaj.pem -o StrictHostKeyChecking=no -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
 
     - name: Deploy to server
       run: |
-        ssh -i ~/.ssh/test-pankaj.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        ssh -i ~/.ssh/test-pankaj.pem -o StrictHostKeyChecking=no -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           set -x  # Enable command tracing
           cd /home/ubuntu/frontend || { echo "Directory change failed"; exit 1; }
 
           # Fetch the latest code
-          git pull origin main || { echo "Git pull failed"; exit 1; }
+          git fetch origin main || { echo "Git fetch failed"; exit 1; }
+          git reset --hard origin/main || { echo "Git reset failed"; exit 1; }
 
           # Clean npm environment
           rm -rf node_modules package-lock.json
