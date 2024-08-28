@@ -32,11 +32,12 @@ jobs:
         HOST: ${{ secrets.SERVER_HOST }}
         USER: ${{ secrets.SERVER_USER }}
       run: |
-        ssh -o StrictHostKeyChecking=no $USER@$HOST << 'EOF'
-          cd /home/ubuntu/frontend
-          git pull origin main
-          npm install
-          npm run build # If needed
-          pm2 delete react-app || true # Delete if it exists, ignore if it doesn't
-          pm2 start npm --name "react-app" -- start
+        ssh -o StrictHostKeyChecking=no -vvv $USER@$HOST << 'EOF'
+          set -x  # Enable command tracing
+          cd /home/ubuntu/frontend || exit 1
+          git pull origin main || exit 1
+          npm install || exit 1
+          npm run build || exit 1  # If needed
+          pm2 delete react-app || true  # Delete if it exists, ignore if it doesn't
+          pm2 start npm --name "react-app" -- start || exit 1
         EOF
