@@ -18,37 +18,33 @@ jobs:
       with:
         node-version: '18'  # Adjust Node.js version if needed
 
-    - name: Setup SSH
+    - name: Setup SSH with PEM Key
       run: |
         mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        echo "StrictHostKeyChecking no" > ~/.ssh/config
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa.pem
+        chmod 600 ~/.ssh/id_rsa.pem
+        echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Verify SSH Connection
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH Connection Successful'"
       env:
         SERVER_USER: ${{ secrets.SERVER_USER }}
         SERVER_HOST: ${{ secrets.SERVER_HOST }}
 
     - name: Deploy to server
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa.pem -vvv ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           set -x  # Enable command tracing
           cd /home/ubuntu/frontend || exit 1
-
           # Ensure Git repository is correct and up to date
           git pull origin main || exit 1
-
           # Install Node.js dependencies
           npm install || exit 1
-
           # Build the application (if needed)
           npm run build || exit 1
-
           # Restart the application using PM2
           pm2 delete react-app || true  # Ignore error if app doesn't exist
           pm2 start npm --name "react-app" -- start || exit 1
